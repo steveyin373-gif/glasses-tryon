@@ -145,24 +145,19 @@ function onResults(results) {
   const dy = rightEyeS.y - leftEyeS.y;
   const rollAngle = Math.atan2(dy, dx);
 
-  // pitch
-  const faceHeight = Math.sqrt(
-    (chinS.x - foreheadS.x) ** 2 +
-    (chinS.y - foreheadS.y) ** 2
-  );
-  const expectedFaceHeight = eyeDistance * 1.6;
-  const pitchAngle = Math.asin(
-    Math.max(-0.5, Math.min(0.5, (expectedFaceHeight - faceHeight) / expectedFaceHeight))
-  ) * 0.8;
+  // pitch: use Z depth between forehead and chin
+  const foreheadZ = lm(KEY_POINTS.foreheadTop).z;
+  const chinZ = lm(KEY_POINTS.chin).z;
+  const pitchZDiff = chinZ - foreheadZ;
+  const pitchAngle = Math.atan2(pitchZDiff, eyeDistance) * 0.6;
 
-  // yaw: use Z depth difference between eyes directly
-  // MediaPipe z: smaller = closer to camera
-  // Turn right → left eye closer (smaller z), right eye further (larger z)
-  // → zDiff < 0 → negative rotation → CSS scaleX(-1) flips to positive visually → right side back ✓
+  // yaw: use Z depth difference between eyes
   const eyeZDiff = rightEyeS.z - leftEyeS.z;
   const yawAngle = Math.atan2(eyeZDiff, eyeDistance) * 0.8;
 
-  glassesGroup.position.set(posX, posY + scale * 0.05, posZ);
+  // compensate position drift when head rotates
+  const yawOffset = Math.sin(yawAngle) * scale * 0.4;
+  glassesGroup.position.set(posX + yawOffset, posY + scale * 0.05, posZ);
   glassesGroup.scale.setScalar(scale);
   glassesGroup.rotation.set(pitchAngle, yawAngle, -rollAngle);
   glassesGroup.visible = true;

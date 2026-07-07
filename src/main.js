@@ -159,8 +159,8 @@ function onResults(results) {
   // MediaPipe z: smaller = closer to camera
   // Turn right → left eye closer (smaller z), right eye further (larger z)
   // → zDiff < 0 → negative rotation → CSS scaleX(-1) flips to positive visually → right side back ✓
-  const eyeZDiff = leftEyeS.z - rightEyeS.z;
-  const yawAngle = Math.atan2(eyeZDiff, eyeDistance) * 2.5;
+  const eyeZDiff = rightEyeS.z - leftEyeS.z;
+  const yawAngle = Math.atan2(eyeZDiff, eyeDistance) * 0.8;
 
   glassesGroup.position.set(posX, posY + scale * 0.05, posZ);
   glassesGroup.scale.setScalar(scale);

@@ -40,8 +40,7 @@ function toContainerCoords(nx, ny, nz) {
   const cy = ny * videoHeight * s - oy;
   const cz = nz * videoWidth * s;
 
-  // mirror X to match the CSS scaleX(-1) on the video
-  return { x: cw - cx, y: cy, z: cz };
+  return { x: cx, y: cy, z: cz };
 }
 
 function initThree() {

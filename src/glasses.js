@@ -139,9 +139,9 @@ function addTemples(group, mat) {
   [-1, 1].forEach(side => {
     const templeCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(side * 1.1, 0.35, 0),
-      new THREE.Vector3(side * 1.2, 0.35, -1.2),
-      new THREE.Vector3(side * 1.2, 0.25, -3.2),
-      new THREE.Vector3(side * 1.15, 0.15, -4.8),
+      new THREE.Vector3(side * 1.2, 0.35, -0.3),
+      new THREE.Vector3(side * 1.2, 0.25, -0.8),
+      new THREE.Vector3(side * 1.15, 0.15, -1.2),
     ]);
     const templeGeo = new THREE.TubeGeometry(templeCurve, 16, 0.02, 8, false);
     group.add(new THREE.Mesh(templeGeo, mat));

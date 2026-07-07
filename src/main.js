@@ -145,10 +145,8 @@ function onResults(results) {
   const dy = rightEyeS.y - leftEyeS.y;
   const rollAngle = Math.atan2(dy, dx);
 
-  // pitch: use Z depth between forehead and chin
-  const foreheadZ = lm(KEY_POINTS.foreheadTop).z;
-  const chinZ = lm(KEY_POINTS.chin).z;
-  const pitchZDiff = chinZ - foreheadZ;
+  // pitch: use Z depth between forehead and chin (screen-mapped, same scale as eyeDistance)
+  const pitchZDiff = chinS.z - foreheadS.z;
   const pitchAngle = Math.atan2(pitchZDiff, eyeDistance) * 0.6;
 
   // yaw: use Z depth difference between eyes

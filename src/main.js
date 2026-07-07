@@ -173,7 +173,7 @@ function onResults(results) {
 
   glassesGroup.position.set(posX, posY + scale * 0.05, posZ);
   glassesGroup.scale.setScalar(scale);
-  glassesGroup.rotation.set(-pitchAngle, yawSign * Math.abs(yawAngle), -rollAngle);
+  glassesGroup.rotation.set(-pitchAngle, -yawSign * Math.abs(yawAngle), -rollAngle);
   glassesGroup.visible = true;
 
   renderer.render(scene, camera3d);

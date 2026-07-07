@@ -156,7 +156,8 @@ function onResults(results) {
 
   // compensate position drift when head rotates
   const yawOffset = Math.sin(yawAngle) * scale * 0.8;
-  glassesGroup.position.set(posX + yawOffset, posY + scale * 0.05, posZ);
+  const pitchOffset = Math.sin(pitchAngle) * scale * 0.5;
+  glassesGroup.position.set(posX + yawOffset, posY + scale * 0.05 + pitchOffset, posZ);
   glassesGroup.scale.setScalar(scale);
   glassesGroup.rotation.set(pitchAngle, yawAngle, -rollAngle);
   glassesGroup.visible = true;

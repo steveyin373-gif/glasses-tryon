@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>AR 眼镜试戴</title>
+  <link rel="stylesheet" href="/src/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="app">
+    <div id="canvas-container">
+      <video id="video" playsinline autoplay muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div id="controls">
+      <div id="glasses-picker">
+        <button class="glass-btn active" data-style="aviator">飞行员</button>
+        <button class="glass-btn" data-style="round">圆框</button>
+        <button class="glass-btn" data-style="cat-eye">猫眼</button>
+        <button class="glass-btn" data-style="wayfarer">方框</button>
+      </div>
+      <div id="color-picker">
+        <button class="color-btn active" data-color="#1a1a1a" style="background:#1a1a1a"></button>
+        <button class="color-btn" data-color="#c5a04e" style="background:#c5a04e"></button>
+        <button class="color-btn" data-color="#8b4513" style="background:#8b4513"></button>
+        <button class="color-btn" data-color="#c0c0c0" style="background:#c0c0c0"></button>
+        <button class="color-btn" data-color="#e84393" style="background:#e84393"></button>
+      </div>
+    </div>
+
+    <div id="status">正在加载模型...</div>
+    <button id="capture-btn">📸 拍照</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

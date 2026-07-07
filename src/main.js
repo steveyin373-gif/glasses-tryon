@@ -148,7 +148,7 @@ function onResults(results) {
   // pitch: use Z depth between forehead and chin
   const foreheadZ = lm(KEY_POINTS.foreheadTop).z;
   const chinZ = lm(KEY_POINTS.chin).z;
-  const pitchZDiff = foreheadZ - chinZ;
+  const pitchZDiff = chinZ - foreheadZ;
   const pitchAngle = Math.atan2(pitchZDiff, eyeDistance) * 0.6;
 
   // yaw: use Z depth difference between eyes

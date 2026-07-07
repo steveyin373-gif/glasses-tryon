@@ -6,6 +6,7 @@ import { createGlasses } from './glasses.js';
 
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
+const container = document.getElementById('canvas-container');
 const status = document.getElementById('status');
 const captureBtn = document.getElementById('capture-btn');
 
@@ -14,24 +15,61 @@ let currentColor = '#1a1a1a';
 let glassesGroup = null;
 let scene, camera3d, renderer;
 let videoWidth, videoHeight;
+let containerWidth, containerHeight;
 
-function initThree(width, height) {
-  videoWidth = width;
-  videoHeight = height;
+function getCoverTransform() {
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  containerWidth = cw;
+  containerHeight = ch;
+
+  const videoAspect = videoWidth / videoHeight;
+  const containerAspect = cw / ch;
+
+  let scale, ox, oy;
+  if (containerAspect > videoAspect) {
+    scale = cw / videoWidth;
+    ox = 0;
+    oy = (videoHeight * scale - ch) / 2;
+  } else {
+    scale = ch / videoHeight;
+    ox = (videoWidth * scale - cw) / 2;
+    oy = 0;
+  }
+  return { scale, ox, oy };
+}
+
+function landmarkToContainer(nx, ny, nz) {
+  const { scale, ox, oy } = getCoverTransform();
+  return {
+    x: nx * videoWidth * scale - ox,
+    y: ny * videoHeight * scale - oy,
+    z: nz * videoWidth * scale,
+  };
+}
+
+function initThree() {
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  containerWidth = cw;
+  containerHeight = ch;
 
   scene = new THREE.Scene();
 
   camera3d = new THREE.OrthographicCamera(
-    -width / 2, width / 2,
-    height / 2, -height / 2,
+    -cw / 2, cw / 2,
+    ch / 2, -ch / 2,
     0.1, 2000
   );
   camera3d.position.z = 500;
 
   renderer = new THREE.WebGLRenderer({ canvas: overlay, alpha: true });
-  renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(cw, ch);
   renderer.setClearColor(0x000000, 0);
+
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -45,6 +83,24 @@ function initThree(width, height) {
   scene.add(rimLight);
 
   replaceGlasses();
+}
+
+function updateRendererSize() {
+  if (!renderer) return;
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  containerWidth = cw;
+  containerHeight = ch;
+
+  camera3d.left = -cw / 2;
+  camera3d.right = cw / 2;
+  camera3d.top = ch / 2;
+  camera3d.bottom = -ch / 2;
+  camera3d.updateProjectionMatrix();
+
+  renderer.setSize(cw, ch);
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
 }
 
 function replaceGlasses() {
@@ -84,11 +140,7 @@ function onResults(results) {
   const forehead = lm(KEY_POINTS.foreheadTop);
   const chin = lm(KEY_POINTS.chin);
 
-  const toScreen = (p) => ({
-    x: p.x * videoWidth,
-    y: p.y * videoHeight,
-    z: p.z * videoWidth,
-  });
+  const toScreen = (p) => landmarkToContainer(p.x, p.y, p.z);
 
   const noseS = toScreen(nose);
   const leftEyeS = toScreen(leftEye);
@@ -98,14 +150,17 @@ function onResults(results) {
   const foreheadS = toScreen(forehead);
   const chinS = toScreen(chin);
 
+  const cw = containerWidth;
+  const ch = containerHeight;
+
   const eyeCenter = {
     x: (leftEyeS.x + rightEyeS.x) / 2,
     y: (leftEyeS.y + rightEyeS.y) / 2,
     z: (leftEyeS.z + rightEyeS.z) / 2,
   };
 
-  const posX = eyeCenter.x - videoWidth / 2;
-  const posY = -(eyeCenter.y - videoHeight / 2);
+  const posX = eyeCenter.x - cw / 2;
+  const posY = -(eyeCenter.y - ch / 2);
   const posZ = -eyeCenter.z;
 
   const eyeDistance = Math.sqrt(
@@ -177,9 +232,12 @@ async function init() {
     };
   });
 
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-  initThree(vw, vh);
+  videoWidth = video.videoWidth;
+  videoHeight = video.videoHeight;
+  initThree();
+
+  const ro = new ResizeObserver(() => updateRendererSize());
+  ro.observe(container);
 
   status.textContent = '模型加载中，首次可能需要几秒...';
 
@@ -187,8 +245,8 @@ async function init() {
     onFrame: async () => {
       await faceMesh.send({ image: video });
     },
-    width: vw,
-    height: vh,
+    width: videoWidth,
+    height: videoHeight,
   });
 
   await cam.start();
@@ -214,19 +272,27 @@ document.querySelectorAll('.color-btn').forEach(btn => {
 });
 
 captureBtn.addEventListener('click', () => {
+  const cw = containerWidth;
+  const ch = containerHeight;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = videoWidth;
-  canvas.height = videoHeight;
+  canvas.width = cw;
+  canvas.height = ch;
 
+  const { scale, ox, oy } = getCoverTransform();
   ctx.save();
   ctx.scale(-1, 1);
-  ctx.drawImage(video, -videoWidth, 0, videoWidth, videoHeight);
+  ctx.drawImage(
+    video,
+    ox / scale, oy / scale,
+    cw / scale, ch / scale,
+    -cw, 0, cw, ch
+  );
   ctx.restore();
 
   ctx.save();
   ctx.scale(-1, 1);
-  ctx.drawImage(overlay, -videoWidth, 0, videoWidth, videoHeight);
+  ctx.drawImage(overlay, -cw, 0, cw, ch);
   ctx.restore();
 
   const link = document.createElement('a');

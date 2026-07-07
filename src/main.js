@@ -157,7 +157,7 @@ function onResults(results) {
   // compensate position drift when head rotates
   const yawOffset = Math.sin(yawAngle) * scale * 0.8;
   // use rawPitch for position compensation (pitchAngle is too small after scaling)
-  const pitchOffset = Math.sin(rawPitch) * scale * (rawPitch > 0 ? 0.06 : 0.03);
+  const pitchOffset = Math.sin(rawPitch) * scale * (rawPitch > 0 ? 0.03 : 0.015);
   // base Y offset: move glasses down from eye center to nose bridge level
   const baseYOffset = -scale * 0.15;
   glassesGroup.position.set(posX + yawOffset, posY + baseYOffset + pitchOffset, posZ);

@@ -15,44 +15,37 @@ let currentColor = '#1a1a1a';
 let glassesGroup = null;
 let scene, camera3d, renderer;
 let videoWidth, videoHeight;
-let containerWidth, containerHeight;
 
-function getCoverTransform() {
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-  containerWidth = cw;
-  containerHeight = ch;
+function getContainerSize() {
+  return { cw: container.clientWidth, ch: container.clientHeight };
+}
 
+function toContainerCoords(nx, ny, nz) {
+  const { cw, ch } = getContainerSize();
   const videoAspect = videoWidth / videoHeight;
   const containerAspect = cw / ch;
 
-  let scale, ox, oy;
+  let s, ox, oy;
   if (containerAspect > videoAspect) {
-    scale = cw / videoWidth;
+    s = cw / videoWidth;
     ox = 0;
-    oy = (videoHeight * scale - ch) / 2;
+    oy = (videoHeight * s - ch) / 2;
   } else {
-    scale = ch / videoHeight;
-    ox = (videoWidth * scale - cw) / 2;
+    s = ch / videoHeight;
+    ox = (videoWidth * s - cw) / 2;
     oy = 0;
   }
-  return { scale, ox, oy };
-}
 
-function landmarkToContainer(nx, ny, nz) {
-  const { scale, ox, oy } = getCoverTransform();
-  return {
-    x: nx * videoWidth * scale - ox,
-    y: ny * videoHeight * scale - oy,
-    z: nz * videoWidth * scale,
-  };
+  const cx = nx * videoWidth * s - ox;
+  const cy = ny * videoHeight * s - oy;
+  const cz = nz * videoWidth * s;
+
+  // mirror X to match the CSS scaleX(-1) on the video
+  return { x: cw - cx, y: cy, z: cz };
 }
 
 function initThree() {
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-  containerWidth = cw;
-  containerHeight = ch;
+  const { cw, ch } = getContainerSize();
 
   scene = new THREE.Scene();
 
@@ -65,11 +58,8 @@ function initThree() {
 
   renderer = new THREE.WebGLRenderer({ canvas: overlay, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(cw, ch);
+  renderer.setSize(cw, ch, false);
   renderer.setClearColor(0x000000, 0);
-
-  overlay.style.width = '100%';
-  overlay.style.height = '100%';
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -87,10 +77,7 @@ function initThree() {
 
 function updateRendererSize() {
   if (!renderer) return;
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-  containerWidth = cw;
-  containerHeight = ch;
+  const { cw, ch } = getContainerSize();
 
   camera3d.left = -cw / 2;
   camera3d.right = cw / 2;
@@ -98,9 +85,7 @@ function updateRendererSize() {
   camera3d.bottom = -ch / 2;
   camera3d.updateProjectionMatrix();
 
-  renderer.setSize(cw, ch);
-  overlay.style.width = '100%';
-  overlay.style.height = '100%';
+  renderer.setSize(cw, ch, false);
 }
 
 function replaceGlasses() {
@@ -129,29 +114,18 @@ function onResults(results) {
     return;
   }
 
+  const { cw, ch } = getContainerSize();
   const landmarks = results.multiFaceLandmarks[0];
   const lm = (idx) => landmarks[idx];
 
-  const nose = lm(KEY_POINTS.noseBridge);
-  const leftEye = lm(KEY_POINTS.leftEye);
-  const rightEye = lm(KEY_POINTS.rightEye);
-  const leftTemple = lm(KEY_POINTS.leftTemple);
-  const rightTemple = lm(KEY_POINTS.rightTemple);
-  const forehead = lm(KEY_POINTS.foreheadTop);
-  const chin = lm(KEY_POINTS.chin);
+  const toS = (p) => toContainerCoords(p.x, p.y, p.z);
 
-  const toScreen = (p) => landmarkToContainer(p.x, p.y, p.z);
-
-  const noseS = toScreen(nose);
-  const leftEyeS = toScreen(leftEye);
-  const rightEyeS = toScreen(rightEye);
-  const leftTempleS = toScreen(leftTemple);
-  const rightTempleS = toScreen(rightTemple);
-  const foreheadS = toScreen(forehead);
-  const chinS = toScreen(chin);
-
-  const cw = containerWidth;
-  const ch = containerHeight;
+  const leftEyeS = toS(lm(KEY_POINTS.leftEye));
+  const rightEyeS = toS(lm(KEY_POINTS.rightEye));
+  const leftTempleS = toS(lm(KEY_POINTS.leftTemple));
+  const rightTempleS = toS(lm(KEY_POINTS.rightTemple));
+  const foreheadS = toS(lm(KEY_POINTS.foreheadTop));
+  const chinS = toS(lm(KEY_POINTS.chin));
 
   const eyeCenter = {
     x: (leftEyeS.x + rightEyeS.x) / 2,
@@ -159,6 +133,7 @@ function onResults(results) {
     z: (leftEyeS.z + rightEyeS.z) / 2,
   };
 
+  // map from container pixel coords to Three.js coords (origin at center)
   const posX = eyeCenter.x - cw / 2;
   const posY = -(eyeCenter.y - ch / 2);
   const posZ = -eyeCenter.z;
@@ -169,10 +144,12 @@ function onResults(results) {
   );
   const scale = eyeDistance / 1.4;
 
+  // roll: angle between the two eyes (already mirrored so left/right are swapped)
   const dx = rightEyeS.x - leftEyeS.x;
   const dy = rightEyeS.y - leftEyeS.y;
   const rollAngle = Math.atan2(dy, dx);
 
+  // pitch: compare face height to expected
   const faceHeight = Math.sqrt(
     (chinS.x - foreheadS.x) ** 2 +
     (chinS.y - foreheadS.y) ** 2
@@ -182,6 +159,7 @@ function onResults(results) {
     Math.max(-0.5, Math.min(0.5, (expectedFaceHeight - faceHeight) / expectedFaceHeight))
   ) * 0.8;
 
+  // yaw: compare face width to expected
   const faceWidth = Math.sqrt(
     (rightTempleS.x - leftTempleS.x) ** 2 +
     (rightTempleS.y - leftTempleS.y) ** 2
@@ -272,28 +250,37 @@ document.querySelectorAll('.color-btn').forEach(btn => {
 });
 
 captureBtn.addEventListener('click', () => {
-  const cw = containerWidth;
-  const ch = containerHeight;
+  const { cw, ch } = getContainerSize();
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = cw;
   canvas.height = ch;
 
-  const { scale, ox, oy } = getCoverTransform();
+  const videoAspect = videoWidth / videoHeight;
+  const containerAspect = cw / ch;
+  let s, ox, oy;
+  if (containerAspect > videoAspect) {
+    s = cw / videoWidth;
+    ox = 0;
+    oy = (videoHeight * s - ch) / 2;
+  } else {
+    s = ch / videoHeight;
+    ox = (videoWidth * s - cw) / 2;
+    oy = 0;
+  }
+
+  // draw mirrored video (matching CSS scaleX(-1))
   ctx.save();
   ctx.scale(-1, 1);
   ctx.drawImage(
     video,
-    ox / scale, oy / scale,
-    cw / scale, ch / scale,
+    ox / s, oy / s, cw / s, ch / s,
     -cw, 0, cw, ch
   );
   ctx.restore();
 
-  ctx.save();
-  ctx.scale(-1, 1);
-  ctx.drawImage(overlay, -cw, 0, cw, ch);
-  ctx.restore();
+  // draw glasses overlay (already in correct coords, no mirror needed)
+  ctx.drawImage(overlay, 0, 0, cw, ch);
 
   const link = document.createElement('a');
   link.download = `glasses-tryon-${Date.now()}.png`;

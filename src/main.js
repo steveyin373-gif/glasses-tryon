@@ -121,8 +121,6 @@ function onResults(results) {
 
   const leftEyeS = toS(lm(KEY_POINTS.leftEye));
   const rightEyeS = toS(lm(KEY_POINTS.rightEye));
-  const leftTempleS = toS(lm(KEY_POINTS.leftTemple));
-  const rightTempleS = toS(lm(KEY_POINTS.rightTemple));
   const foreheadS = toS(lm(KEY_POINTS.foreheadTop));
   const chinS = toS(lm(KEY_POINTS.chin));
 
@@ -132,7 +130,6 @@ function onResults(results) {
     z: (leftEyeS.z + rightEyeS.z) / 2,
   };
 
-  // map from container pixel coords to Three.js coords (origin at center)
   const posX = eyeCenter.x - cw / 2;
   const posY = -(eyeCenter.y - ch / 2);
   const posZ = -eyeCenter.z;
@@ -143,12 +140,12 @@ function onResults(results) {
   );
   const scale = eyeDistance / 1.4;
 
-  // roll: angle between the two eyes (already mirrored so left/right are swapped)
+  // roll
   const dx = rightEyeS.x - leftEyeS.x;
   const dy = rightEyeS.y - leftEyeS.y;
   const rollAngle = Math.atan2(dy, dx);
 
-  // pitch: compare face height to expected
+  // pitch
   const faceHeight = Math.sqrt(
     (chinS.x - foreheadS.x) ** 2 +
     (chinS.y - foreheadS.y) ** 2
@@ -158,22 +155,16 @@ function onResults(results) {
     Math.max(-0.5, Math.min(0.5, (expectedFaceHeight - faceHeight) / expectedFaceHeight))
   ) * 0.8;
 
-  // yaw: compare face width to expected
-  const faceWidth = Math.sqrt(
-    (rightTempleS.x - leftTempleS.x) ** 2 +
-    (rightTempleS.y - leftTempleS.y) ** 2
-  );
-  const expectedFaceWidth = eyeDistance * 1.8;
-  const yawAngle = Math.asin(
-    Math.max(-0.6, Math.min(0.6, (expectedFaceWidth - faceWidth) / expectedFaceWidth))
-  );
-
-  const midTemple = (leftTempleS.x + rightTempleS.x) / 2;
-  const yawSign = midTemple > eyeCenter.x ? 1 : -1;
+  // yaw: use Z depth difference between eyes directly
+  // MediaPipe z: smaller = closer to camera
+  // Turn right → left eye closer (smaller z), right eye further (larger z)
+  // → zDiff < 0 → negative rotation → CSS scaleX(-1) flips to positive visually → right side back ✓
+  const eyeZDiff = leftEyeS.z - rightEyeS.z;
+  const yawAngle = Math.atan2(eyeZDiff, eyeDistance) * 2.5;
 
   glassesGroup.position.set(posX, posY + scale * 0.05, posZ);
   glassesGroup.scale.setScalar(scale);
-  glassesGroup.rotation.set(-pitchAngle, -yawSign * Math.abs(yawAngle), -rollAngle);
+  glassesGroup.rotation.set(-pitchAngle, yawAngle, -rollAngle);
   glassesGroup.visible = true;
 
   renderer.render(scene, camera3d);

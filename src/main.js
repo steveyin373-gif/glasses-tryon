@@ -72,6 +72,8 @@ async function initThree() {
   scene.add(rimLight);
 
   currentPhotoUrl = '/models/glasses1_front.png';
+  currentSideUrl = '/models/glasses1_side.png';
+  currentSideMirrorUrl = '/models/glasses1_side_mirror.png';
   await replaceGlasses();
 }
 
@@ -89,11 +91,13 @@ function updateRendererSize() {
 }
 
 let currentPhotoUrl = null;
+let currentSideUrl = null;
+let currentSideMirrorUrl = null;
 
 async function replaceGlasses() {
   if (glassesGroup) scene.remove(glassesGroup);
   if (currentPhotoUrl) {
-    glassesGroup = await createPhotoGlasses(currentPhotoUrl);
+    glassesGroup = await createPhotoGlasses(currentPhotoUrl, currentSideUrl, currentSideMirrorUrl);
   } else {
     glassesGroup = createGlasses(currentStyle, currentColor);
   }
@@ -232,8 +236,12 @@ document.querySelectorAll('.glass-btn').forEach(btn => {
     btn.classList.add('active');
     if (btn.dataset.photo) {
       currentPhotoUrl = btn.dataset.photo;
+      currentSideUrl = btn.dataset.side || null;
+      currentSideMirrorUrl = btn.dataset.sideMirror || null;
     } else {
       currentPhotoUrl = null;
+      currentSideUrl = null;
+      currentSideMirrorUrl = null;
       currentStyle = btn.dataset.style;
     }
     replaceGlasses();

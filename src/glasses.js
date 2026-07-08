@@ -14,49 +14,67 @@ function loadTexture(url) {
   });
 }
 
-// Photo-based glasses: front image on plane + 3D temple arms
-export async function createPhotoGlasses(frontUrl, frameColor = '#1a1a1a') {
+// Photo-based glasses: front image on plane + side photo textured temple arms
+export async function createPhotoGlasses(frontUrl, sideUrl, sideMirrorUrl) {
   const group = new THREE.Group();
-  const texture = await loadTexture(frontUrl);
+  const frontTex = await loadTexture(frontUrl);
 
-  const imgW = texture.image.width;
-  const imgH = texture.image.height;
+  const imgW = frontTex.image.width;
+  const imgH = frontTex.image.height;
   const aspect = imgW / imgH;
 
-  const planeW = 3.2;
+  const planeW = 2.8;
   const planeH = planeW / aspect;
 
-  const geo = new THREE.PlaneGeometry(planeW, planeH);
-  const mat = new THREE.MeshBasicMaterial({
-    map: texture,
+  const frontGeo = new THREE.PlaneGeometry(planeW, planeH);
+  const frontMat = new THREE.MeshBasicMaterial({
+    map: frontTex,
     transparent: true,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
+  group.add(new THREE.Mesh(frontGeo, frontMat));
 
-  const mesh = new THREE.Mesh(geo, mat);
-  group.add(mesh);
+  // Temple arms with side photo texture
+  if (sideUrl) {
+    const sideTex = await loadTexture(sideUrl);
+    const sideMirrorTex = sideMirrorUrl ? await loadTexture(sideMirrorUrl) : sideTex;
 
-  // 3D temple arms matching frame color
-  const templeMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(frameColor),
-    metalness: 0.4,
-    roughness: 0.5,
-  });
+    const halfW = planeW / 2;
+    const topY = planeH * 0.35;
+    const templeLength = 1.4;
+    const templeHeight = 0.12;
 
-  const halfW = planeW / 2;
-  const topY = planeH * 0.35;
+    const sideAspect = sideTex.image.width / sideTex.image.height;
+    const templeW = templeLength;
+    const templeH = templeLength / sideAspect;
 
-  [-1, 1].forEach(side => {
-    const templeCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(side * halfW, topY, 0),
-      new THREE.Vector3(side * (halfW + 0.15), topY, -0.3),
-      new THREE.Vector3(side * (halfW + 0.15), topY * 0.6, -0.8),
-      new THREE.Vector3(side * (halfW + 0.1), topY * 0.2, -1.2),
-    ]);
-    const templeGeo = new THREE.TubeGeometry(templeCurve, 16, 0.025, 8, false);
-    group.add(new THREE.Mesh(templeGeo, templeMat));
-  });
+    // Right temple (side = 1)
+    const rightGeo = new THREE.PlaneGeometry(templeW, templeH);
+    const rightMat = new THREE.MeshBasicMaterial({
+      map: sideTex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const rightTemple = new THREE.Mesh(rightGeo, rightMat);
+    rightTemple.position.set(halfW + templeW / 2, topY * 0.5, -templeW / 2);
+    rightTemple.rotation.y = Math.PI / 2;
+    group.add(rightTemple);
+
+    // Left temple (mirrored)
+    const leftGeo = new THREE.PlaneGeometry(templeW, templeH);
+    const leftMat = new THREE.MeshBasicMaterial({
+      map: sideMirrorTex,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const leftTemple = new THREE.Mesh(leftGeo, leftMat);
+    leftTemple.position.set(-(halfW + templeW / 2), topY * 0.5, -templeW / 2);
+    leftTemple.rotation.y = -Math.PI / 2;
+    group.add(leftTemple);
+  }
 
   return group;
 }

@@ -1,5 +1,47 @@
 import * as THREE from 'three';
 
+const textureLoader = new THREE.TextureLoader();
+const textureCache = {};
+
+function loadTexture(url) {
+  if (textureCache[url]) return Promise.resolve(textureCache[url]);
+  return new Promise((resolve, reject) => {
+    textureLoader.load(url, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      textureCache[url] = tex;
+      resolve(tex);
+    }, undefined, reject);
+  });
+}
+
+// Photo-based glasses: front image mapped onto a plane
+export async function createPhotoGlasses(frontUrl) {
+  const group = new THREE.Group();
+  const texture = await loadTexture(frontUrl);
+
+  const imgW = texture.image.width;
+  const imgH = texture.image.height;
+  const aspect = imgW / imgH;
+
+  // plane sized to match glasses proportions (width ~2.4 units to span eye area)
+  const planeW = 2.4;
+  const planeH = planeW / aspect;
+
+  const geo = new THREE.PlaneGeometry(planeW, planeH);
+  const mat = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  group.add(mesh);
+
+  return group;
+}
+
+// Programmatic glasses (original 3D models)
 export function createGlasses(style = 'aviator', color = '#1a1a1a') {
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({

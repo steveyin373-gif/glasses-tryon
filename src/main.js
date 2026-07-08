@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const { FaceMesh } = window;
 const { Camera } = window;
-import { createGlasses } from './glasses.js';
+import { createGlasses, createPhotoGlasses } from './glasses.js';
 
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
@@ -10,7 +10,7 @@ const container = document.getElementById('canvas-container');
 const status = document.getElementById('status');
 const captureBtn = document.getElementById('capture-btn');
 
-let currentStyle = 'aviator';
+let currentStyle = 'photo';
 let currentColor = '#1a1a1a';
 let glassesGroup = null;
 let scene, camera3d, renderer;
@@ -43,7 +43,7 @@ function toContainerCoords(nx, ny, nz) {
   return { x: cx, y: cy, z: cz };
 }
 
-function initThree() {
+async function initThree() {
   const { cw, ch } = getContainerSize();
 
   scene = new THREE.Scene();
@@ -71,7 +71,8 @@ function initThree() {
   rimLight.position.set(0, 0, -300);
   scene.add(rimLight);
 
-  replaceGlasses();
+  currentPhotoUrl = '/models/glasses1_front.png';
+  await replaceGlasses();
 }
 
 function updateRendererSize() {
@@ -87,9 +88,15 @@ function updateRendererSize() {
   renderer.setSize(cw, ch, false);
 }
 
-function replaceGlasses() {
+let currentPhotoUrl = null;
+
+async function replaceGlasses() {
   if (glassesGroup) scene.remove(glassesGroup);
-  glassesGroup = createGlasses(currentStyle, currentColor);
+  if (currentPhotoUrl) {
+    glassesGroup = await createPhotoGlasses(currentPhotoUrl);
+  } else {
+    glassesGroup = createGlasses(currentStyle, currentColor);
+  }
   glassesGroup.visible = false;
   scene.add(glassesGroup);
 }
@@ -200,7 +207,7 @@ async function init() {
 
   videoWidth = video.videoWidth;
   videoHeight = video.videoHeight;
-  initThree();
+  await initThree();
 
   const ro = new ResizeObserver(() => updateRendererSize());
   ro.observe(container);
@@ -223,7 +230,12 @@ document.querySelectorAll('.glass-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelector('.glass-btn.active')?.classList.remove('active');
     btn.classList.add('active');
-    currentStyle = btn.dataset.style;
+    if (btn.dataset.photo) {
+      currentPhotoUrl = btn.dataset.photo;
+    } else {
+      currentPhotoUrl = null;
+      currentStyle = btn.dataset.style;
+    }
     replaceGlasses();
   });
 });

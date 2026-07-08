@@ -14,8 +14,8 @@ function loadTexture(url) {
   });
 }
 
-// Photo-based glasses: front image mapped onto a plane
-export async function createPhotoGlasses(frontUrl) {
+// Photo-based glasses: front image on plane + 3D temple arms
+export async function createPhotoGlasses(frontUrl, frameColor = '#1a1a1a') {
   const group = new THREE.Group();
   const texture = await loadTexture(frontUrl);
 
@@ -23,8 +23,7 @@ export async function createPhotoGlasses(frontUrl) {
   const imgH = texture.image.height;
   const aspect = imgW / imgH;
 
-  // plane sized to match glasses proportions (width ~2.4 units to span eye area)
-  const planeW = 2.4;
+  const planeW = 3.2;
   const planeH = planeW / aspect;
 
   const geo = new THREE.PlaneGeometry(planeW, planeH);
@@ -37,6 +36,27 @@ export async function createPhotoGlasses(frontUrl) {
 
   const mesh = new THREE.Mesh(geo, mat);
   group.add(mesh);
+
+  // 3D temple arms matching frame color
+  const templeMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(frameColor),
+    metalness: 0.4,
+    roughness: 0.5,
+  });
+
+  const halfW = planeW / 2;
+  const topY = planeH * 0.35;
+
+  [-1, 1].forEach(side => {
+    const templeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(side * halfW, topY, 0),
+      new THREE.Vector3(side * (halfW + 0.15), topY, -0.3),
+      new THREE.Vector3(side * (halfW + 0.15), topY * 0.6, -0.8),
+      new THREE.Vector3(side * (halfW + 0.1), topY * 0.2, -1.2),
+    ]);
+    const templeGeo = new THREE.TubeGeometry(templeCurve, 16, 0.025, 8, false);
+    group.add(new THREE.Mesh(templeGeo, templeMat));
+  });
 
   return group;
 }
